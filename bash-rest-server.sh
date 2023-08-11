@@ -7,10 +7,16 @@ HTTP_200="HTTP/1.1 200 OK"
 HTTP_404="HTTP/1.0 404"
 HTTP_LOCATION="Location:"
 HTTP_CONT_LEN="Content-Length:"
+HTTP_CONT_TYPE="Content-Type:"
 NOT_FOUND_MSG="Resource not found!"
 
+## ~~~ Scripts ~~~
 
-calc_content_len()
+HANDLE_MODEL_PATH="./handle_model.sh"
+
+## ~~~ Functions ~~~
+
+function calc_content_len
 {
     CHAR_LEN=$(echo "$1" | wc -c)
     LINE_LEN=$(echo "$1" | wc -l)
@@ -19,7 +25,7 @@ calc_content_len()
 
 function handle_ciao
 {
-    echo -n "$(cat <<'EOF'
+    cat <<'EOF'
 <!DOCTYPE html>
 <html>
     <head>
@@ -27,11 +33,15 @@ function handle_ciao
     </head>
     <body>
         <h2>Ciao!</h2>
-        <p style="color: red;">Ciao Mamma!!!</p>
+        <p style="color: red;">Ciao!!!</p>
     </body>
 </html>
 EOF
-    )"
+}
+
+function handle_model
+{
+    echo -n "$($HANDLE_MODEL_PATH $1)"
 }
 
 ## ~~~ Main ~~~
@@ -54,15 +64,22 @@ while true; do
                 echo "REQUEST -> $REQ" # DEBUG
 
                 CONTENT=
+                CONTENT_TYPE=
 
                 case $REQ in
-                    /ciao ) CONTENT=$(handle_ciao) ;;
-
+                    /ciao ) 
+                        CONTENT_TYPE="text/html"
+                        CONTENT=$(handle_ciao) ;;
+                    /model/* ) 
+                        RESULT=$(handle_model "$REQ")
+                        CONTENT_TYPE=$(echo "$RESULT" | head -n 1)
+                        CONTENT=$(echo "$RESULT" | tail -n +2)
+                        ;;
                 esac
 
                 if [ -n "$CONTENT" ]; then
                     CONTENT_LEN=$(calc_content_len "$CONTENT")
-                    printf "%s\n%s %d\n\n%s\n" "$HTTP_200" "$HTTP_CONT_LEN" "$CONTENT_LEN" "$CONTENT" > $PIPE
+                    printf "%s\n%s %d\n%s %s\n\n%s\n" "$HTTP_200" "$HTTP_CONT_LEN" "$CONTENT_LEN" "$HTTP_CONT_TYPE" "$CONTENT_TYPE" "$CONTENT" > $PIPE
                     printf "RESPONSE -> %s\n%s %d\n\n%s\n" "$HTTP_200" "$HTTP_CONT_LEN" "$CONTENT_LEN" "$CONTENT" # DEBUG
                 else
                     printf "%s\n\n%s\n" "$HTTP_404" "$NOT_FOUND_MSG" > $PIPE

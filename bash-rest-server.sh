@@ -1,32 +1,25 @@
 #!/bin/bash
 
-PIPE_NAME=bash_server
+PIPE=bash_server
 PORT=29982
 
 HTTP_200="HTTP/1.1 200 OK"
-HTTP_404="HTTP/1.1 404 Not Found"
+HTTP_404="HTTP/1.0 404"
 HTTP_LOCATION="Location:"
 HTTP_CONT_LEN="Content-Length:"
+NOT_FOUND_MSG="Resource not found!"
 
-rm -f $PIPE_NAME
-mkfifo $PIPE_NAME
-trap "rm -f $PIPE_NAME" EXIT
 
-while true; do
-    cat $PIPE_NAME | nc -lCv -p $PORT > >(
-        export REQ=
-        while read line; do
-            line=$(echo "$line" | tr -d '[\r\n]')
+calc_content_len()
+{
+    CHAR_LEN=$(echo "$1" | wc -c)
+    LINE_LEN=$(echo "$1" | wc -l)
+    echo -n $(($CHAR_LEN+$LINE_LEN)) # Counting lines twice because of double CRLF newlines
+}
 
-            echo "***$line***" # DEBUG
-
-            if echo "$line" | grep -qE '^GET /'; then
-                REQ=$(echo "$line" | cut -d ' ' -f2)
-            elif [[ -z "$line" ]]; then
-
-                echo "REQUEST -> $REQ" # DEBUG
-
-                CONTENT=$(cat <<'EOF'
+function handle_ciao
+{
+    echo -n "$(cat <<'EOF'
 <!DOCTYPE html>
 <html>
     <head>
@@ -38,16 +31,43 @@ while true; do
     </body>
 </html>
 EOF
-                )
-                CHAR_LEN=$(echo "$CONTENT" | wc -c)
-                LINE_LEN=$(echo "$CONTENT" | wc -l)
-                CONTENT_LEN=$(($CHAR_LEN+$LINE_LEN)) # Counting lines twice because of double CRLF newlines
+    )"
+}
 
-                echo "LEN -> $CONTENT_LEN" #DEBUG
+## ~~~ Main ~~~
 
-                printf "%s\n%s %d\n\n%s\n" "$HTTP_200" "$HTTP_CONT_LEN" "$CONTENT_LEN" "$CONTENT" > $PIPE_NAME
+rm -f $PIPE
+mkfifo $PIPE
+trap "rm -f $PIPE" EXIT
 
-                printf "RESPONSE -> %s\n%s %d\n\n%s\n" "$HTTP_200" "$HTTP_CONT_LEN" "$CONTENT_LEN" "$CONTENT" # DEBUG
+while true; do
+    cat $PIPE | nc -lCv -q1 -p $PORT > >(
+        while read line; do
+            line=$(echo "$line" | tr -d '[\r\n]')
+
+            # echo "***$line***" # DEBUG
+
+            if echo "$line" | grep -qE '^GET /'; then
+                REQ=$(echo "$line" | cut -d ' ' -f2)
+            elif [ -z "$line" ]; then
+
+                echo "REQUEST -> $REQ" # DEBUG
+
+                CONTENT=
+
+                case $REQ in
+                    /ciao ) CONTENT=$(handle_ciao) ;;
+
+                esac
+
+                if [ -n "$CONTENT" ]; then
+                    CONTENT_LEN=$(calc_content_len "$CONTENT")
+                    printf "%s\n%s %d\n\n%s\n" "$HTTP_200" "$HTTP_CONT_LEN" "$CONTENT_LEN" "$CONTENT" > $PIPE
+                    printf "RESPONSE -> %s\n%s %d\n\n%s\n" "$HTTP_200" "$HTTP_CONT_LEN" "$CONTENT_LEN" "$CONTENT" # DEBUG
+                else
+                    printf "%s\n\n%s\n" "$HTTP_404" "$NOT_FOUND_MSG" > $PIPE
+                    printf "RESPONSE -> %s\n\n%s\n" "$HTTP_404" "$NOT_FOUND_MSG" # DEBUG
+                fi
             fi
         done
     )

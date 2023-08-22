@@ -67,6 +67,7 @@ QUERY=$(echo "$1" | cut -d '/' -f3)
 PARAM=$(echo "$1" | cut -d '/' -f4)
 
 if [ $(echo "$PARAM" | grep -c '?') -eq '0' ]; then
+    # Default case (no 'fmt' option)
     OUT_FMT="json"
 else
     OUT_FMT=$(echo "$PARAM" | cut -d '?' -f2 | cut -d '=' -f2)
@@ -82,11 +83,6 @@ case $QUERY in
         QUERY_REGEX="\|$PARAM\s*" ;;
 esac
 
-# echo "QUERY: $QUERY" # DEBUG
-# echo "PARAM: $PARAM" # DEBUG
-# echo "OUT_FMT: $OUT_FMT" # DEBUG
-# echo "QUERY_REGEX: $QUERY_REGEX" # DEBUG
-
 if [ -z "$QUERY_REGEX" ]; then
     OUTPUT=
 else
@@ -95,7 +91,7 @@ else
         | sed 's/^$//g' \
         | sed 's/"/\\\"/g' \
         | grep -Ei $(echo "$QUERY_REGEX") \
-	    | sort -k2 -t'|' -d \
+        | sort -k2 -t'|' -d \
         )
 
     case $OUT_FMT in
@@ -108,6 +104,7 @@ else
     esac
 fi
 
+# Echo the content type in the first line, the actual content in the following ones
 echo "$CONTENT_TYPE"
 echo "$OUTPUT"
 

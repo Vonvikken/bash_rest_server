@@ -46,31 +46,35 @@ function handle_model
 
 ## ~~~ Main ~~~
 
+# Remove existing pipe before recreating it
 rm -f $PIPE
 mkfifo $PIPE
+
+# Ensuring that the pipe is removed when the script exits
 trap "rm -f $PIPE" EXIT
 
 while true; do
-    cat $PIPE | nc -lCv -q1 -p $PORT > >(
+    cat $PIPE | nc -l -q1 -p $PORT > >(
         while read line; do
             line=$(echo "$line" | tr -d '[\r\n]')
 
-            # echo "***$line***" # DEBUG
-
             if echo "$line" | grep -qE '^GET /'; then
+                # Look for a GET request, then extract it
                 REQ=$(echo "$line" | cut -d ' ' -f2)
             elif [ -z "$line" ]; then
-
-                echo "REQUEST -> $REQ" # DEBUG
+                # When encountering an empty line, let's suppose that we reached the end of the HTTP header, so we can proceed
 
                 CONTENT=
                 CONTENT_TYPE=
 
                 case $REQ in
-                    /ciao ) 
+                    /ciao )
+                        # Sample request
                         CONTENT_TYPE="text/html"
                         CONTENT=$(handle_ciao) ;;
-                    /model/* ) 
+                    /model/* )
+                        # Simple scale model inventory management
+                        # Process the request, then extract the content type and the content
                         RESULT=$(handle_model "$REQ")
                         CONTENT_TYPE=$(echo "$RESULT" | head -n 1)
                         CONTENT=$(echo "$RESULT" | tail -n +2)
@@ -78,12 +82,12 @@ while true; do
                 esac
 
                 if [ -n "$CONTENT" ]; then
+                    # If there is a content to display, respond with HTTP 200 and the content
                     CONTENT_LEN=$(calc_content_len "$CONTENT")
                     printf "%s\n%s %d\n%s %s\n\n%s\n" "$HTTP_200" "$HTTP_CONT_LEN" "$CONTENT_LEN" "$HTTP_CONT_TYPE" "$CONTENT_TYPE" "$CONTENT" > $PIPE
-                    printf "RESPONSE -> %s\n%s %d\n\n%s\n" "$HTTP_200" "$HTTP_CONT_LEN" "$CONTENT_LEN" "$CONTENT" # DEBUG
                 else
+                    # Otherwise respond with a HTTP 404
                     printf "%s\n\n%s\n" "$HTTP_404" "$NOT_FOUND_MSG" > $PIPE
-                    printf "RESPONSE -> %s\n\n%s\n" "$HTTP_404" "$NOT_FOUND_MSG" # DEBUG
                 fi
             fi
         done

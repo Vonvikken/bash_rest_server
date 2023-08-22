@@ -95,6 +95,7 @@ else
         | sed 's/^$//g' \
         | sed 's/"/\\\"/g' \
         | grep -Ei $(echo "$QUERY_REGEX") \
+	    | sort -k2 -t'|' -d \
         )
 
     case $OUT_FMT in

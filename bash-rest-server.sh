@@ -54,7 +54,7 @@ mkfifo $PIPE
 trap "rm -f $PIPE" EXIT
 
 while true; do
-    cat $PIPE | nc -l -q1 -p $PORT > >(
+    cat $PIPE | nc -lC -q1 -p $PORT > >(
         while read line; do
             line=$(echo "$line" | tr -d '[\r\n]')
 

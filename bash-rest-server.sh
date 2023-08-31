@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PIPE=bash_server
-PORT=29982
+PORT=20000
 
 HTTP_200="HTTP/1.1 200 OK"
 HTTP_404="HTTP/1.0 404"
@@ -10,7 +10,7 @@ HTTP_CONT_LEN="Content-Length:"
 HTTP_CONT_TYPE="Content-Type:"
 NOT_FOUND_MSG="Resource not found!"
 
-## ~~~ Scripts ~~~
+## ~~~ Handler scripts ~~~
 
 HANDLE_MODEL_PATH="./handle_model.sh"
 
@@ -29,7 +29,7 @@ function handle_ciao
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Prova</title>
+        <title>Sample</title>
     </head>
     <body>
         <h2>Ciao!</h2>
@@ -79,6 +79,7 @@ while true; do
                         CONTENT_TYPE=$(echo "$RESULT" | head -n 1)
                         CONTENT=$(echo "$RESULT" | tail -n +2)
                         ;;
+                    # Additional paths here
                 esac
 
                 if [ -n "$CONTENT" ]; then
@@ -86,7 +87,7 @@ while true; do
                     CONTENT_LEN=$(calc_content_len "$CONTENT")
                     printf "%s\n%s %d\n%s %s\n\n%s\n" "$HTTP_200" "$HTTP_CONT_LEN" "$CONTENT_LEN" "$HTTP_CONT_TYPE" "$CONTENT_TYPE" "$CONTENT" > $PIPE
                 else
-                    # Otherwise respond with a HTTP 404
+                    # Otherwise respond with HTTP 404
                     printf "%s\n\n%s\n" "$HTTP_404" "$NOT_FOUND_MSG" > $PIPE
                 fi
             fi

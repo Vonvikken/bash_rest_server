@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# input file format: POSITION|NAME|BRAND
+# Storage file format: POSITION|NAME|BRAND
 IN_FILE="models.txt"
 
 ## ~~~ Functions ~~~
@@ -81,6 +81,7 @@ case $QUERY in
         QUERY_REGEX="^box_$PARAM" ;;
     brand )
         QUERY_REGEX="\|$PARAM\s*" ;;
+    # Other queries here
 esac
 
 if [ -z "$QUERY_REGEX" ]; then
@@ -101,6 +102,7 @@ else
         html )
             CONTENT_TYPE="text/html"
             OUTPUT=$(to_html "$CONTENT") ;;
+        # Other formats here
     esac
 fi
 
